@@ -43,3 +43,32 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Environment variables
+.env
+
+# Generated files by build_runner
+*.g.dart
+*.freezed.dart
+
+# iOS specific
+/ios/Pods/
+/ios/.symlinks/
+/ios/.flutter-plugins
+/ios/.flutter-plugins-dependencies
+
+# Android specific
+/android/.gradle/
+/android/local.properties
+/android/key.properties
+/android/build/
+/android/captures/
+
+# Desktop specific
+/windows/flutter/ephemeral/
+/linux/flutter/ephemeral/
+/macos/Flutter/ephemeral/
+
+# Web specific
+/web/flutter_service_worker.js
+/web/assets/
