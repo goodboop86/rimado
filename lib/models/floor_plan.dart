@@ -2,14 +2,20 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 class FloorPlan {
+  final double width;
+  final double height;
   final List<Layout> layouts;
 
-  FloorPlan({required this.layouts});
+  FloorPlan({required this.width, required this.height, required this.layouts});
 
   factory FloorPlan.fromJson(Map<String, dynamic> json) {
     var layoutsList = json['layouts'] as List;
     List<Layout> layouts = layoutsList.map((i) => Layout.fromJson(i)).toList();
-    return FloorPlan(layouts: layouts);
+    return FloorPlan(
+      width: json['width'].toDouble(),
+      height: json['height'].toDouble(),
+      layouts: layouts,
+    );
   }
 }
 

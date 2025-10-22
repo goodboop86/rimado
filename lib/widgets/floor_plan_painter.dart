@@ -3,8 +3,9 @@ import '../models/floor_plan.dart';
 
 class FloorPlanPainter extends CustomPainter {
   final FloorPlan floorPlan;
+  final String? selectedLayoutId;
 
-  FloorPlanPainter({required this.floorPlan});
+  FloorPlanPainter({required this.floorPlan, this.selectedLayoutId});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -26,6 +27,12 @@ class FloorPlanPainter extends CustomPainter {
         ..color = layout.getBorderColor()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0;
+
+      // 選択中のレイアウトをハイライト
+      if (layout.id == selectedLayoutId) {
+        borderPaint.color = Colors.deepPurple; // ハイライト色
+        borderPaint.strokeWidth = 4.0; // 枠線を太くする
+      }
 
       final path = Path();
       path.moveTo(layout.vertices[0].x, layout.vertices[0].y);

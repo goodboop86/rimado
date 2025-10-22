@@ -32,9 +32,13 @@ class FloorPlanPage extends StatefulWidget {
 
 class _FloorPlanPageState extends State<FloorPlanPage> {
   late FloorPlan _floorPlan;
+  String? _selectedLayoutId; // 選択中のレイアウトID
+  Offset? _lastPanPosition; // ドラッグ開始時の位置
 
   final String floorPlanJson = """
 {
+  "width": 790,
+  "height": 990,
   "layouts": [
     {
       "id": "ldk_10_6",
@@ -48,7 +52,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
       ]
     },
     {
-      "id": "bedroom_5_2",
+      "id": "bedroom_a_5_2",
       "name": "洋室5.2帖",
       "type": "bedroom",
       "vertices": [
@@ -59,7 +63,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
       ]
     },
     {
-      "id": "bedroom_6_1",
+      "id": "bedroom_b_6_1",
       "name": "洋室6.1帖",
       "type": "bedroom",
       "vertices": [
@@ -70,7 +74,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
       ]
     },
     {
-      "id": "w_cl",
+      "id": "walk_in_closet",
       "name": "W-CL",
       "type": "closet",
       "vertices": [
@@ -87,8 +91,14 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
       "vertices": [
         {"x": 450, "y": 200},
         {"x": 500, "y": 200},
+        {"x": 500, "y": 430},
+        {"x": 500, "y": 480},
+        {"x": 500, "y": 520},
         {"x": 500, "y": 930},
-        {"x": 450, "y": 930}
+        {"x": 450, "y": 930},
+        {"x": 450, "y": 480},
+        {"x": 450, "y": 430},
+        {"x": 450, "y": 300}
       ]
     },
     {
@@ -114,7 +124,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
       ]
     },
     {
-      "id": "toilet_wc",
+      "id": "toilet",
       "name": "WC",
       "type": "toilet",
       "vertices": [
@@ -147,6 +157,17 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
       ]
     },
     {
+      "id": "storage_linen",
+      "name": "収納",
+      "type": "closet",
+      "vertices": [
+        {"x": 10, "y": 200},
+        {"x": 100, "y": 200},
+        {"x": 100, "y": 300},
+        {"x": 10, "y": 300}
+      ]
+    },
+    {
       "id": "balcony",
       "name": "バルコニー",
       "type": "balcony",
@@ -167,18 +188,26 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
     _floorPlan = FloorPlan.fromJson(jsonDecode(floorPlanJson));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // JSONデータから最大座標を計算し、CustomPaintのサイズを決定
-    double maxWidth = 0;
-    double maxHeight = 0;
+  // タップされた位置がどのレイアウト内にあるかを判定するヘルパー関数
+  String? _findLayoutAtTap(Offset tapPosition) {
     for (var layout in _floorPlan.layouts) {
-      for (var vertex in layout.vertices) {
-        if (vertex.x > maxWidth) maxWidth = vertex.x;
-        if (vertex.y > maxHeight) maxHeight = vertex.y;
+      final path = Path();
+      if (layout.vertices.isNotEmpty) {
+        path.moveTo(layout.vertices[0].x, layout.vertices[0].y);
+        for (var i = 1; i < layout.vertices.length; i++) {
+          path.lineTo(layout.vertices[i].x, layout.vertices[i].y);
+        }
+        path.close();
+        if (path.contains(tapPosition)) {
+          return layout.id;
+        }
       }
     }
+    return null;
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Floor Plan Viewer'),
@@ -188,11 +217,54 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
         scrollDirection: Axis.vertical,
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: maxWidth + 50, // 余白を追加
-            height: maxHeight + 50, // 余白を追加
-            child: CustomPaint(
-              painter: FloorPlanPainter(floorPlan: _floorPlan),
+          child: GestureDetector(
+            onPanStart: (details) {
+              setState(() {
+                _selectedLayoutId = _findLayoutAtTap(details.localPosition);
+                _lastPanPosition = details.localPosition;
+              });
+            },
+            onPanUpdate: (details) {
+              if (_selectedLayoutId != null && _lastPanPosition != null) {
+                final dx = details.localPosition.dx - _lastPanPosition!.dx;
+                final dy = details.localPosition.dy - _lastPanPosition!.dy;
+
+                setState(() {
+                  final updatedLayouts = _floorPlan.layouts.map((layout) {
+                    if (layout.id == _selectedLayoutId) {
+                      final updatedVertices = layout.vertices.map((vertex) {
+                        return Vertex(x: vertex.x + dx, y: vertex.y + dy);
+                      }).toList();
+                      return Layout(
+                        id: layout.id,
+                        name: layout.name,
+                        type: layout.type,
+                        vertices: updatedVertices,
+                      );
+                    }
+                    return layout;
+                  }).toList();
+                  _floorPlan = FloorPlan(
+                    width: _floorPlan.width,
+                    height: _floorPlan.height,
+                    layouts: updatedLayouts,
+                  );
+                  _lastPanPosition = details.localPosition;
+                });
+              }
+            },
+            onPanEnd: (details) {
+              _lastPanPosition = null;
+            },
+            child: SizedBox(
+              width: _floorPlan.width + 50, // 余白を追加
+              height: _floorPlan.height + 50, // 余白を追加
+              child: CustomPaint(
+                painter: FloorPlanPainter(
+                  floorPlan: _floorPlan,
+                  selectedLayoutId: _selectedLayoutId,
+                ),
+              ),
             ),
           ),
         ),
