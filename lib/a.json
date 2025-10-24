@@ -1,0 +1,37 @@
+{
+    "floors": [
+        {
+            "floor_name": "[フロア名 例: 1F, 2F]",
+            "rooms": [
+                {
+                    "name": "[部屋名 例: LDK, 洋室_6帖]",
+                    "type": "[部屋の用途 例: Living_Dining_Kitchen, Western_Room]",
+                    "loc_x_abs_m": "[フロア全体の原点からの左上X絶対座標]",
+                    "loc_y_abs_m": "[フロア全体の原点からの左上Y絶対座標]",
+                    "width_m": "[近似された長方形の幅 (m)]",
+                    "height_m": "[近似された長方形の高さ (m)]",
+                    "elements": [
+                        {
+                            "type": "Closet",
+                            "width_m": 1.82,
+                            "height_m": 0.91,
+                            "location_rel_m": {
+                                "x": 0.00,
+                                "y": 0.00
+                            }
+                        },
+                        {
+                            "type": "Storage",
+                            "width_m": 1.00,
+                            "height_m": 0.50,
+                            "location_rel_m": {
+                                "x": 4.50,
+                                "y": 0.10
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
