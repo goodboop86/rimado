@@ -37,7 +37,10 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
   String? _selectedLayoutId; // 選択中のレイアウトID
   int? _selectedVertexIndex; // 選択中の頂点インデックス
   DragMode _dragMode = DragMode.none; // ドラッグモード
-  Offset? _lastPanPosition; // ドラッグ開始時の位置
+  Offset? _panStartOffset; // ドラッグ開始時のグローバル位置
+  List<Vertex>? _originalVertices; // ドラッグ開始時の頂点リスト
+
+  final double snapIncrement = 10.0;
 
   final String floorPlanJson = """
 {
@@ -192,6 +195,11 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
     _floorPlan = FloorPlan.fromJson(jsonDecode(floorPlanJson));
   }
 
+  // 値を最も近い増分にスナップさせるヘルパー関数
+  double _snapToGrid(double value) {
+    return (value / snapIncrement).round() * snapIncrement;
+  }
+
   // タップされた位置にある頂点を判定するヘルパー関数
   int? _findVertexAtTap(Layout layout, Offset tapPosition) {
     const double handleRadius = 10.0;
@@ -255,13 +263,15 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
 
               if (tappedVertexIndex != null) {
                 setState(() {
-                  _lastPanPosition = details.localPosition;
+                  _panStartOffset = details.localPosition;
+                  _originalVertices = tappedLayout.vertices;
                   _selectedVertexIndex = tappedVertexIndex;
                   _dragMode = DragMode.vertex;
                 });
               } else if (isInsideLayout) {
                 setState(() {
-                  _lastPanPosition = details.localPosition;
+                  _panStartOffset = details.localPosition;
+                  _originalVertices = tappedLayout.vertices;
                   _selectedVertexIndex = null;
                   _dragMode = DragMode.layout;
                 });
@@ -270,58 +280,72 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
               }
             },
             onPanUpdate: (details) {
-              if (_selectedLayoutId != null && _lastPanPosition != null) {
-                final dx = details.localPosition.dx - _lastPanPosition!.dx;
-                final dy = details.localPosition.dy - _lastPanPosition!.dy;
-
-                setState(() {
-                  final updatedLayouts = _floorPlan.layouts.map((layout) {
-                    if (layout.id == _selectedLayoutId) {
-                      if (_dragMode == DragMode.layout) {
-                        // レイアウト全体の移動
-                        final updatedVertices = layout.vertices.map((vertex) {
-                          return Vertex(x: vertex.x + dx, y: vertex.y + dy);
-                        }).toList();
-                        return Layout(
-                          id: layout.id,
-                          name: layout.name,
-                          type: layout.type,
-                          vertices: updatedVertices,
-                        );
-                      } else if (_dragMode == DragMode.vertex &&
-                          _selectedVertexIndex != null) {
-                        // 頂点の移動
-                        final updatedVertices = List<Vertex>.from(
-                          layout.vertices,
-                        );
-                        final oldVertex =
-                            updatedVertices[_selectedVertexIndex!];
-                        updatedVertices[_selectedVertexIndex!] = Vertex(
-                          x: oldVertex.x + dx,
-                          y: oldVertex.y + dy,
-                        );
-                        return Layout(
-                          id: layout.id,
-                          name: layout.name,
-                          type: layout.type,
-                          vertices: updatedVertices,
-                        );
-                      }
-                    }
-                    return layout;
-                  }).toList();
-                  _floorPlan = FloorPlan(
-                    width: _floorPlan.width,
-                    height: _floorPlan.height,
-                    layouts: updatedLayouts,
-                  );
-                  _lastPanPosition = details.localPosition;
-                });
+              if (_dragMode == DragMode.none ||
+                  _panStartOffset == null ||
+                  _originalVertices == null) {
+                return;
               }
+
+              final totalDx = details.localPosition.dx - _panStartOffset!.dx;
+              final totalDy = details.localPosition.dy - _panStartOffset!.dy;
+
+              if (!totalDx.isFinite || !totalDy.isFinite) {
+                return;
+              }
+
+              final updatedLayouts = _floorPlan.layouts.map((layout) {
+                if (layout.id == _selectedLayoutId) {
+                  if (_dragMode == DragMode.layout) {
+                    // レイアウト全体の移動
+                    final snappedDx = _snapToGrid(totalDx);
+                    final snappedDy = _snapToGrid(totalDy);
+                    final updatedVertices = _originalVertices!.map((vertex) {
+                      return Vertex(
+                        x: vertex.x + snappedDx,
+                        y: vertex.y + snappedDy,
+                      );
+                    }).toList();
+                    return Layout(
+                      id: layout.id,
+                      name: layout.name,
+                      type: layout.type,
+                      vertices: updatedVertices,
+                    );
+                  } else if (_dragMode == DragMode.vertex &&
+                      _selectedVertexIndex != null) {
+                    // 頂点の移動
+                    final updatedVertices = List<Vertex>.from(
+                      _originalVertices!,
+                    );
+                    final originalVertex =
+                        _originalVertices![_selectedVertexIndex!];
+                    updatedVertices[_selectedVertexIndex!] = Vertex(
+                      x: _snapToGrid(originalVertex.x + totalDx),
+                      y: _snapToGrid(originalVertex.y + totalDy),
+                    );
+                    return Layout(
+                      id: layout.id,
+                      name: layout.name,
+                      type: layout.type,
+                      vertices: updatedVertices,
+                    );
+                  }
+                }
+                return layout;
+              }).toList();
+
+              setState(() {
+                _floorPlan = FloorPlan(
+                  width: _floorPlan.width,
+                  height: _floorPlan.height,
+                  layouts: updatedLayouts,
+                );
+              });
             },
             onPanEnd: (details) {
               setState(() {
-                _lastPanPosition = null;
+                _panStartOffset = null;
+                _originalVertices = null;
                 _dragMode = DragMode.none;
                 _selectedVertexIndex = null;
               });
@@ -333,6 +357,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                 painter: FloorPlanPainter(
                   floorPlan: _floorPlan,
                   selectedLayoutId: _selectedLayoutId,
+                  snapIncrement: snapIncrement,
                 ),
               ),
             ),

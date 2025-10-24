@@ -5,11 +5,53 @@ import '../models/floor_plan.dart';
 class FloorPlanPainter extends CustomPainter {
   final FloorPlan floorPlan;
   final String? selectedLayoutId;
+  final double snapIncrement;
 
-  FloorPlanPainter({required this.floorPlan, this.selectedLayoutId});
+  FloorPlanPainter({
+    required this.floorPlan,
+    this.selectedLayoutId,
+    required this.snapIncrement,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
+    // グリッド線の描画
+    final gridPaint = Paint()
+      ..color = Colors.grey.withAlpha((255 * 0.2).round())
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    final gridPaintMedium = Paint()
+      ..color = Colors.grey.withAlpha((255 * 0.4).round())
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    final gridPaintStrong = Paint()
+      ..color = Colors.grey.withAlpha((255 * 0.6).round())
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    for (double i = 0; i < size.width; i += snapIncrement) {
+      Paint paint;
+      if (i % (snapIncrement * 10) == 0) {
+        paint = gridPaintStrong;
+      } else if (i % (snapIncrement * 5) == 0) {
+        paint = gridPaintMedium;
+      } else {
+        paint = gridPaint;
+      }
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    }
+    for (double i = 0; i < size.height; i += snapIncrement) {
+      Paint paint;
+      if (i % (snapIncrement * 10) == 0) {
+        paint = gridPaintStrong;
+      } else if (i % (snapIncrement * 5) == 0) {
+        paint = gridPaintMedium;
+      } else {
+        paint = gridPaint;
+      }
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
+
     final textPainter = TextPainter(
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
@@ -139,6 +181,7 @@ class FloorPlanPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant FloorPlanPainter oldDelegate) {
     return oldDelegate.floorPlan != floorPlan ||
-        oldDelegate.selectedLayoutId != selectedLayoutId;
+        oldDelegate.selectedLayoutId != selectedLayoutId ||
+        oldDelegate.snapIncrement != snapIncrement;
   }
 }
