@@ -30,9 +30,13 @@ class FloorPlanPage extends StatefulWidget {
   State<FloorPlanPage> createState() => _FloorPlanPageState();
 }
 
+enum DragMode { none, layout, vertex }
+
 class _FloorPlanPageState extends State<FloorPlanPage> {
   late FloorPlan _floorPlan;
   String? _selectedLayoutId; // 選択中のレイアウトID
+  int? _selectedVertexIndex; // 選択中の頂点インデックス
+  DragMode _dragMode = DragMode.none; // ドラッグモード
   Offset? _lastPanPosition; // ドラッグ開始時の位置
 
   final String floorPlanJson = """
@@ -188,6 +192,19 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
     _floorPlan = FloorPlan.fromJson(jsonDecode(floorPlanJson));
   }
 
+  // タップされた位置にある頂点を判定するヘルパー関数
+  int? _findVertexAtTap(Layout layout, Offset tapPosition) {
+    const double handleRadius = 10.0;
+    for (var i = 0; i < layout.vertices.length; i++) {
+      final vertex = layout.vertices[i];
+      final distance = (tapPosition - Offset(vertex.x, vertex.y)).distance;
+      if (distance <= handleRadius) {
+        return i;
+      }
+    }
+    return null;
+  }
+
   // タップされた位置がどのレイアウト内にあるかを判定するヘルパー関数
   String? _findLayoutAtTap(Offset tapPosition) {
     for (var layout in _floorPlan.layouts) {
@@ -220,8 +237,27 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
           child: GestureDetector(
             onPanStart: (details) {
               setState(() {
-                _selectedLayoutId = _findLayoutAtTap(details.localPosition);
+                final tappedLayoutId = _findLayoutAtTap(details.localPosition);
+                _selectedLayoutId = tappedLayoutId;
                 _lastPanPosition = details.localPosition;
+
+                if (tappedLayoutId != null) {
+                  final tappedLayout = _floorPlan.layouts.firstWhere(
+                    (l) => l.id == tappedLayoutId,
+                  );
+                  _selectedVertexIndex = _findVertexAtTap(
+                    tappedLayout,
+                    details.localPosition,
+                  );
+                  if (_selectedVertexIndex != null) {
+                    _dragMode = DragMode.vertex;
+                  } else {
+                    _dragMode = DragMode.layout;
+                  }
+                } else {
+                  _dragMode = DragMode.none;
+                  _selectedVertexIndex = null;
+                }
               });
             },
             onPanUpdate: (details) {
@@ -232,15 +268,36 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                 setState(() {
                   final updatedLayouts = _floorPlan.layouts.map((layout) {
                     if (layout.id == _selectedLayoutId) {
-                      final updatedVertices = layout.vertices.map((vertex) {
-                        return Vertex(x: vertex.x + dx, y: vertex.y + dy);
-                      }).toList();
-                      return Layout(
-                        id: layout.id,
-                        name: layout.name,
-                        type: layout.type,
-                        vertices: updatedVertices,
-                      );
+                      if (_dragMode == DragMode.layout) {
+                        // レイアウト全体の移動
+                        final updatedVertices = layout.vertices.map((vertex) {
+                          return Vertex(x: vertex.x + dx, y: vertex.y + dy);
+                        }).toList();
+                        return Layout(
+                          id: layout.id,
+                          name: layout.name,
+                          type: layout.type,
+                          vertices: updatedVertices,
+                        );
+                      } else if (_dragMode == DragMode.vertex &&
+                          _selectedVertexIndex != null) {
+                        // 頂点の移動
+                        final updatedVertices = List<Vertex>.from(
+                          layout.vertices,
+                        );
+                        final oldVertex =
+                            updatedVertices[_selectedVertexIndex!];
+                        updatedVertices[_selectedVertexIndex!] = Vertex(
+                          x: oldVertex.x + dx,
+                          y: oldVertex.y + dy,
+                        );
+                        return Layout(
+                          id: layout.id,
+                          name: layout.name,
+                          type: layout.type,
+                          vertices: updatedVertices,
+                        );
+                      }
                     }
                     return layout;
                   }).toList();
@@ -254,7 +311,11 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
               }
             },
             onPanEnd: (details) {
-              _lastPanPosition = null;
+              setState(() {
+                _lastPanPosition = null;
+                _dragMode = DragMode.none;
+                _selectedVertexIndex = null;
+              });
             },
             child: SizedBox(
               width: _floorPlan.width + 50, // 余白を追加

@@ -44,6 +44,21 @@ class FloorPlanPainter extends CustomPainter {
       canvas.drawPath(path, fillPaint);
       canvas.drawPath(path, borderPaint);
 
+      // 選択中のレイアウトの頂点にハンドルを描画
+      if (layout.id == selectedLayoutId) {
+        final handlePaint = Paint()
+          ..color = Colors.deepPurple
+          ..style = PaintingStyle.fill;
+        const double handleRadius = 10.0;
+        for (var vertex in layout.vertices) {
+          canvas.drawCircle(
+            Offset(vertex.x, vertex.y),
+            handleRadius,
+            handlePaint,
+          );
+        }
+      }
+
       // レイアウト名の描画
       // 頂点から中心座標を計算し、そこにテキストを描画
       double minX = layout.vertices[0].x;
@@ -81,7 +96,8 @@ class FloorPlanPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false; // レイアウトデータが変わらない限り再描画不要
+  bool shouldRepaint(covariant FloorPlanPainter oldDelegate) {
+    return oldDelegate.floorPlan != floorPlan ||
+        oldDelegate.selectedLayoutId != selectedLayoutId;
   }
 }
