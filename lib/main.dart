@@ -235,30 +235,39 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: GestureDetector(
-            onPanStart: (details) {
+            onTapUp: (details) {
               setState(() {
-                final tappedLayoutId = _findLayoutAtTap(details.localPosition);
-                _selectedLayoutId = tappedLayoutId;
-                _lastPanPosition = details.localPosition;
-
-                if (tappedLayoutId != null) {
-                  final tappedLayout = _floorPlan.layouts.firstWhere(
-                    (l) => l.id == tappedLayoutId,
-                  );
-                  _selectedVertexIndex = _findVertexAtTap(
-                    tappedLayout,
-                    details.localPosition,
-                  );
-                  if (_selectedVertexIndex != null) {
-                    _dragMode = DragMode.vertex;
-                  } else {
-                    _dragMode = DragMode.layout;
-                  }
-                } else {
-                  _dragMode = DragMode.none;
-                  _selectedVertexIndex = null;
-                }
+                _selectedLayoutId = _findLayoutAtTap(details.localPosition);
               });
+            },
+            onPanStart: (details) {
+              if (_selectedLayoutId == null) return;
+
+              final tappedLayout = _floorPlan.layouts.firstWhere(
+                (l) => l.id == _selectedLayoutId,
+              );
+              final tappedVertexIndex = _findVertexAtTap(
+                tappedLayout,
+                details.localPosition,
+              );
+              final isInsideLayout =
+                  _findLayoutAtTap(details.localPosition) == _selectedLayoutId;
+
+              if (tappedVertexIndex != null) {
+                setState(() {
+                  _lastPanPosition = details.localPosition;
+                  _selectedVertexIndex = tappedVertexIndex;
+                  _dragMode = DragMode.vertex;
+                });
+              } else if (isInsideLayout) {
+                setState(() {
+                  _lastPanPosition = details.localPosition;
+                  _selectedVertexIndex = null;
+                  _dragMode = DragMode.layout;
+                });
+              } else {
+                _dragMode = DragMode.none;
+              }
             },
             onPanUpdate: (details) {
               if (_selectedLayoutId != null && _lastPanPosition != null) {
