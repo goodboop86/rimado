@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/floor_plan.dart';
 
@@ -43,6 +44,46 @@ class FloorPlanPainter extends CustomPainter {
 
       canvas.drawPath(path, fillPaint);
       canvas.drawPath(path, borderPaint);
+
+      // 選択中のレイアウトの各辺の長さを描画
+      if (layout.id == selectedLayoutId) {
+        for (var i = 0; i < layout.vertices.length; i++) {
+          final p1 = layout.vertices[i];
+          final p2 = layout
+              .vertices[(i + 1) % layout.vertices.length]; // 次の頂点（最後は最初に戻る）
+
+          // 中間点
+          final midX = (p1.x + p2.x) / 2;
+          final midY = (p1.y + p2.y) / 2;
+
+          // 長さ
+          final length = sqrt(pow(p2.x - p1.x, 2) + pow(p2.y - p1.y, 2));
+
+          // 角度
+          final angle = atan2(p2.y - p1.y, p2.x - p1.x);
+
+          canvas.save();
+          canvas.translate(midX, midY);
+          canvas.rotate(angle);
+
+          // テキストが逆さまにならないように調整
+          if (angle > pi / 2 || angle < -pi / 2) {
+            canvas.translate(0, -15); // テキストの位置を調整
+            canvas.rotate(pi);
+          } else {
+            canvas.translate(0, 5); // テキストの位置を調整
+          }
+
+          textPainter.text = TextSpan(
+            text: length.toStringAsFixed(1), // 小数点以下1桁で表示
+            style: TextStyle(color: Colors.black, fontSize: 12.0),
+          );
+          textPainter.layout();
+          textPainter.paint(canvas, Offset(-textPainter.width / 2, 0));
+
+          canvas.restore();
+        }
+      }
 
       // 選択中のレイアウトの頂点にハンドルを描画
       if (layout.id == selectedLayoutId) {
