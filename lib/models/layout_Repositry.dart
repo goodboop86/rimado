@@ -8,15 +8,17 @@ import 'package:rimado/utils/utils.dart';
 class LayoutRepositry {
   late FloorPlan floorPlan;
   late double movingBasis;
-  String? selectedLayoutId; // 選択中のレイアウトID
+  String? _selectedLayoutId; // 選択中のレイアウトID
   late Layout selectedLayout;
   int? selectedVertexIndex; // 選択中の頂点インデックス
   DragMode dragMode = DragMode.none; // ドラッグモード
   Offset? panStartOffset; // ドラッグ開始時のグローバル位置
   List<Vertex>? originalVertices; // ドラッグ開始時の頂点リスト
 
+  get getSelectedLayoutId => _selectedLayoutId;
+
   void updateSelectedLayoutId(Offset localPosition) {
-    selectedLayoutId = floorPlan.findLayoutIdAtTap(localPosition);
+    _selectedLayoutId = floorPlan.findLayoutIdAtTap(localPosition);
   }
 
   void updateSelectedVertexIndex(Offset localPosition) {
@@ -32,7 +34,7 @@ class LayoutRepositry {
 
   void updateSelectedLayout() {
     selectedLayout = floorPlan.layouts.firstWhere(
-      (l) => l.id == selectedLayoutId,
+      (l) => l.id == _selectedLayoutId,
     );
   }
 
@@ -50,7 +52,7 @@ class LayoutRepositry {
   }
 
   bool isInsideLayout(Offset offset) {
-    return floorPlan.findLayoutIdAtTap(offset) == selectedLayoutId;
+    return floorPlan.findLayoutIdAtTap(offset) == _selectedLayoutId;
   }
 
   bool shoundntNeedUpdate() {
@@ -96,7 +98,7 @@ class LayoutRepositry {
     // 1. map() の結果を return
     return floorPlan.layouts.map((layout) {
       // 早期リターン 1: 選択されていないレイアウトはそのまま返す
-      if (layout.id != selectedLayoutId) {
+      if (layout.id != _selectedLayoutId) {
         return layout;
       }
 
@@ -155,7 +157,7 @@ class LayoutRepositry {
 
   // リセット用のメソッドなども追加可能
   void reset() {
-    selectedLayoutId = null;
+    _selectedLayoutId = null;
     selectedVertexIndex = null;
     dragMode = DragMode.none;
     panStartOffset = null;

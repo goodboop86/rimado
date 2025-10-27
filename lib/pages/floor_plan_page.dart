@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:rimado/configs/configs.dart';
 import 'package:rimado/enums/enums.dart';
 import 'package:rimado/models/floor_plan.dart';
-import 'package:rimado/models/layout_interaction.dart';
+import 'package:rimado/models/layout_Repositry.dart';
 import 'package:rimado/widgets/floor_plan_painter.dart';
 import 'package:rimado/utils/utils.dart';
 
@@ -189,7 +189,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
               });
             },
             onPanStart: (details) {
-              if (repo.selectedLayoutId == null) return;
+              if (repo.getSelectedLayoutId == null) return;
 
               repo.updateSelectedLayout();
               repo.updateSelectedVertexIndex(details.localPosition);
@@ -242,7 +242,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
               child: CustomPaint(
                 painter: FloorPlanPainter(
                   floorPlan: repo.floorPlan,
-                  selectedLayoutId: repo.selectedLayoutId,
+                  selectedLayoutId: repo.getSelectedLayoutId,
                   snapIncrement: Configs().snapIncrement,
                 ),
               ),
