@@ -188,6 +188,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                 repo.updateSelectedLayoutId(details.localPosition);
               });
             },
+
             onPanStart: (details) {
               if (repo.getSelectedLayoutId == null) return;
 
@@ -203,9 +204,10 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                   repo.updateDragLayoutRelatedElements(details.localPosition);
                 });
               } else {
-                repo.dragMode = DragMode.none;
+                repo.endDrag();
               }
             },
+
             onPanUpdate: (details) {
               if (repo.shoundntNeedUpdate()) {
                 return;
@@ -230,10 +232,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
             },
             onPanEnd: (details) {
               setState(() {
-                repo.panStartOffset = null;
-                repo.originalVertices = null;
-                repo.dragMode = DragMode.none;
-                repo.selectedVertexIndex = null;
+                repo.endPan();
               });
             },
             child: SizedBox(

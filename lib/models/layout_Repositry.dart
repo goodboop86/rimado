@@ -7,91 +7,90 @@ import 'package:rimado/utils/utils.dart';
 
 class LayoutRepositry {
   late FloorPlan floorPlan;
-  late double movingBasis;
+  late double _movingBasis;
   String? _selectedLayoutId; // 選択中のレイアウトID
-  late Layout selectedLayout;
-  int? selectedVertexIndex; // 選択中の頂点インデックス
-  DragMode dragMode = DragMode.none; // ドラッグモード
-  Offset? panStartOffset; // ドラッグ開始時のグローバル位置
-  List<Vertex>? originalVertices; // ドラッグ開始時の頂点リスト
+  late Layout _selectedLayout;
+  int? _selectedVertexIndex; // 選択中の頂点インデックス
+  DragMode _dragMode = DragMode.none; // ドラッグモード
+  Offset? _panStartOffset; // ドラッグ開始時のグローバル位置
+  List<Vertex>? _originalVertices; // ドラッグ開始時の頂点リスト
 
   get getSelectedLayoutId => _selectedLayoutId;
 
-  void updateSelectedLayoutId(Offset localPosition) {
-    _selectedLayoutId = floorPlan.findLayoutIdAtTap(localPosition);
+  // end
+  void endPan() {
+    _panStartOffset = null;
+    _originalVertices = null;
+    _dragMode = DragMode.none;
+    _selectedVertexIndex = null;
   }
 
+  void endDrag() {
+    _dragMode = DragMode.none;
+  }
+
+  // Vertex
   void updateSelectedVertexIndex(Offset localPosition) {
-    selectedVertexIndex = floorPlan.findVertexAtTap(
-      selectedLayout,
+    _selectedVertexIndex = floorPlan.findVertexAtTap(
+      _selectedLayout,
       localPosition,
     );
   }
 
   void updateOriginalVertices() {
-    originalVertices = selectedLayout.vertices;
-  }
-
-  void updateSelectedLayout() {
-    selectedLayout = floorPlan.layouts.firstWhere(
-      (l) => l.id == _selectedLayoutId,
-    );
+    _originalVertices = _selectedLayout.vertices;
   }
 
   void updateDragVertexRelatedElements(Offset localPosition) {
-    panStartOffset = localPosition;
-    originalVertices = selectedLayout.vertices;
-    dragMode = DragMode.vertex;
-  }
-
-  void updateDragLayoutRelatedElements(Offset localPosition) {
-    panStartOffset = localPosition;
-    originalVertices = selectedLayout.vertices;
-    selectedVertexIndex = null;
-    dragMode = DragMode.layout;
-  }
-
-  bool isInsideLayout(Offset offset) {
-    return floorPlan.findLayoutIdAtTap(offset) == _selectedLayoutId;
-  }
-
-  bool shoundntNeedUpdate() {
-    return dragMode == DragMode.none ||
-        panStartOffset == null ||
-        originalVertices == null;
+    _panStartOffset = localPosition;
+    _originalVertices = _selectedLayout.vertices;
+    _dragMode = DragMode.vertex;
   }
 
   bool isVertexSelected() {
-    return selectedVertexIndex != null;
+    return _selectedVertexIndex != null;
   }
 
-  double totalDx(Offset localPosition) {
-    return localPosition.dx - panStartOffset!.dx;
-  }
-
-  double totalDxBasis(Offset localPosition) {
-    return (totalDx(localPosition) / movingBasis).round() * movingBasis;
-  }
-
-  double totalDy(Offset localPosition) {
-    return localPosition.dy - panStartOffset!.dy;
-  }
-
-  double totalDyBasis(Offset localPosition) {
-    return (totalDy(localPosition) / movingBasis).round() * movingBasis;
+  bool shoundntNeedUpdate() {
+    return _dragMode == DragMode.none ||
+        _panStartOffset == null ||
+        _originalVertices == null;
   }
 
   Vertex getOriginalVertex() {
-    return originalVertices![selectedVertexIndex!];
+    return _originalVertices![_selectedVertexIndex!];
   }
 
   List<Vertex> updatedVertices(Offset localPosition) {
-    return originalVertices!.map((vertex) {
+    return _originalVertices!.map((vertex) {
       return Vertex(
         x: vertex.x + totalDxBasis(localPosition),
         y: vertex.y + totalDyBasis(localPosition),
       );
     }).toList();
+  }
+
+  // Layout
+
+  void updateSelectedLayoutId(Offset localPosition) {
+    _selectedLayoutId = floorPlan.findLayoutIdAtTap(localPosition);
+  }
+
+  void updateSelectedLayout() {
+    _selectedLayout = floorPlan.layouts.firstWhere(
+      (l) => l.id == _selectedLayoutId,
+    );
+  }
+
+  void updateDragLayoutRelatedElements(Offset localPosition) {
+    _panStartOffset = localPosition;
+    _originalVertices = _selectedLayout.vertices;
+    _selectedVertexIndex = null;
+    _dragMode = DragMode.layout;
+  }
+
+  bool isInsideLayout(Offset offset) {
+    return floorPlan.findLayoutIdAtTap(offset) == _selectedLayoutId;
   }
 
   List<Layout> updatedLayouts(Offset localPosition) {
@@ -104,10 +103,10 @@ class LayoutRepositry {
 
       // 2. ドラッグモードに応じて処理を委譲（ネスト解消）
 
-      if (dragMode == DragMode.layout) {
+      if (_dragMode == DragMode.layout) {
         // レイアウト全体の移動
         return _getUpdatedLayoutForLayoutDrag(layout, localPosition);
-      } else if (dragMode == DragMode.vertex && selectedVertexIndex != null) {
+      } else if (_dragMode == DragMode.vertex && _selectedVertexIndex != null) {
         // 頂点の移動
         return _getUpdatedLayoutForVertexDrag(layout, localPosition);
       } else {
@@ -139,12 +138,12 @@ class LayoutRepositry {
     final currentTotalDy = totalDy(localPosition);
 
     // 頂点リストのコピーと、選択された頂点の更新
-    final updatedVertices = List<Vertex>.from(originalVertices!);
+    final updatedVertices = List<Vertex>.from(_originalVertices!);
     final originalVertex = getOriginalVertex();
 
-    updatedVertices[selectedVertexIndex!] = Vertex(
-      x: Utils().snapToGrid(originalVertex.x + currentTotalDx, movingBasis),
-      y: Utils().snapToGrid(originalVertex.y + currentTotalDy, movingBasis),
+    updatedVertices[_selectedVertexIndex!] = Vertex(
+      x: Utils().snapToGrid(originalVertex.x + currentTotalDx, _movingBasis),
+      y: Utils().snapToGrid(originalVertex.y + currentTotalDy, _movingBasis),
     );
 
     return Layout(
@@ -155,17 +154,26 @@ class LayoutRepositry {
     );
   }
 
-  // リセット用のメソッドなども追加可能
-  void reset() {
-    _selectedLayoutId = null;
-    selectedVertexIndex = null;
-    dragMode = DragMode.none;
-    panStartOffset = null;
-    originalVertices = null;
+  // moving calcurate
+
+  double totalDx(Offset localPosition) {
+    return localPosition.dx - _panStartOffset!.dx;
+  }
+
+  double totalDxBasis(Offset localPosition) {
+    return (totalDx(localPosition) / _movingBasis).round() * _movingBasis;
+  }
+
+  double totalDy(Offset localPosition) {
+    return localPosition.dy - _panStartOffset!.dy;
+  }
+
+  double totalDyBasis(Offset localPosition) {
+    return (totalDy(localPosition) / _movingBasis).round() * _movingBasis;
   }
 
   LayoutRepositry(String floorPlanJsonString, movingBasis_) {
     floorPlan = FloorPlan.fromJson(jsonDecode(floorPlanJsonString));
-    movingBasis = movingBasis_;
+    _movingBasis = movingBasis_;
   }
 }
