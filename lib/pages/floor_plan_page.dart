@@ -155,6 +155,7 @@ final String floorPlanJsonString = """
 """;
 
 class FloorPlanPage extends StatefulWidget {
+  // const化してHomePageから引数なしで呼び出せるようにする
   const FloorPlanPage({super.key});
 
   @override
@@ -162,19 +163,77 @@ class FloorPlanPage extends StatefulWidget {
 }
 
 class _FloorPlanPageState extends State<FloorPlanPage> {
+  // late の変数は initState で初期化されます。
   late LayoutRepositry repo;
 
   @override
   void initState() {
     super.initState();
+    // 状態管理クラスの初期化
     repo = LayoutRepositry(floorPlanJsonString, Configs().movingBasis);
+  }
+
+  // Helper function to handle drag end logic
+  void _handlePanEnd() {
+    setState(() {
+      repo.endPan();
+    });
+  }
+
+  // Helper function to handle pan update logic
+  void _handlePanUpdate(DragUpdateDetails details) {
+    if (repo.shoundntNeedUpdate()) {
+      return;
+    }
+
+    final double totalDx = repo.totalDx(details.localPosition);
+    final double totalDy = repo.totalDy(details.localPosition);
+
+    if (!totalDx.isFinite || !totalDy.isFinite) {
+      return;
+    }
+
+    // updatedLayouts が floorPlan の変更を伴うため、setStateの外で計算し、
+    // setState内で repo.floorPlan を更新します。
+    final updatedLayouts = repo.updatedLayouts(details.localPosition);
+
+    setState(() {
+      repo.floorPlan = FloorPlan(
+        width: repo.floorPlan.width,
+        height: repo.floorPlan.height,
+        layouts: updatedLayouts,
+      );
+    });
+  }
+
+  // Helper function to handle pan start logic
+  void _handlePanStart(DragStartDetails details) {
+    if (repo.getSelectedLayoutId == null) return;
+
+    // 以下の処理は repo の内部状態を変更するため、setStateの外で実行してから、
+    // 必要に応じて setState を呼び出して UI を更新します。
+    repo.updateSelectedLayout();
+    repo.updateSelectedVertexIndex(details.localPosition);
+
+    if (repo.isVertexSelected()) {
+      setState(() {
+        repo.updateDragVertexRelatedElements(details.localPosition);
+      });
+    } else if (repo.isInsideLayout(details.localPosition)) {
+      setState(() {
+        repo.updateDragLayoutRelatedElements(details.localPosition);
+      });
+    } else {
+      repo.endDrag();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // repo.getSelectedLayoutId() のようなGetterが存在すると仮定して修正
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Floor Plan Viewer'),
+        title: const Text('Floor Plan Editor'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: SingleChildScrollView(
@@ -187,60 +246,17 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                 repo.updateSelectedLayoutId(details.localPosition);
               });
             },
+            onPanStart: _handlePanStart,
+            onPanUpdate: _handlePanUpdate,
+            onPanEnd: (details) => _handlePanEnd(),
 
-            onPanStart: (details) {
-              if (repo.getSelectedLayoutId == null) return;
-
-              repo.updateSelectedLayout();
-              repo.updateSelectedVertexIndex(details.localPosition);
-
-              if (repo.isVertexSelected()) {
-                setState(() {
-                  repo.updateDragVertexRelatedElements(details.localPosition);
-                });
-              } else if (repo.isInsideLayout(details.localPosition)) {
-                setState(() {
-                  repo.updateDragLayoutRelatedElements(details.localPosition);
-                });
-              } else {
-                repo.endDrag();
-              }
-            },
-
-            onPanUpdate: (details) {
-              if (repo.shoundntNeedUpdate()) {
-                return;
-              }
-
-              final double totalDx = repo.totalDx(details.localPosition);
-              final double totalDy = repo.totalDy(details.localPosition);
-
-              if (!totalDx.isFinite || !totalDy.isFinite) {
-                return;
-              }
-
-              final updatedLayouts = repo.updatedLayouts(details.localPosition);
-
-              setState(() {
-                repo.floorPlan = FloorPlan(
-                  width: repo.floorPlan.width,
-                  height: repo.floorPlan.height,
-                  layouts: updatedLayouts,
-                );
-              });
-            },
-            onPanEnd: (details) {
-              setState(() {
-                repo.endPan();
-              });
-            },
             child: SizedBox(
               width: repo.floorPlan.width + 50, // 余白を追加
               height: repo.floorPlan.height + 50, // 余白を追加
               child: CustomPaint(
                 painter: FloorPlanPainter(
                   floorPlan: repo.floorPlan,
-                  selectedLayoutId: repo.getSelectedLayoutId,
+                  selectedLayoutId: repo.getSelectedLayoutId, // Getterとしてアクセス
                   snapIncrement: Configs().movingBasis,
                 ),
               ),
