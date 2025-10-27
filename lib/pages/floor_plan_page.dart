@@ -163,12 +163,11 @@ class FloorPlanPage extends StatefulWidget {
 
 class _FloorPlanPageState extends State<FloorPlanPage> {
   late LayoutRepositry repo;
-  final double snapIncrement = Configs().snapIncrement;
 
   @override
   void initState() {
     super.initState();
-    repo = LayoutRepositry(floorPlanJsonString, Configs().snapIncrement);
+    repo = LayoutRepositry(floorPlanJsonString, Configs().movingBasis);
   }
 
   @override
@@ -242,7 +241,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                 painter: FloorPlanPainter(
                   floorPlan: repo.floorPlan,
                   selectedLayoutId: repo.getSelectedLayoutId,
-                  snapIncrement: Configs().snapIncrement,
+                  snapIncrement: Configs().movingBasis,
                 ),
               ),
             ),

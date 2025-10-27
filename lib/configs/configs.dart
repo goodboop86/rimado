@@ -1,3 +1,3 @@
 class Configs {
-  final double snapIncrement = 10.0;
+  final double movingBasis = 10.0;
 }
