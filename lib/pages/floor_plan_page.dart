@@ -162,16 +162,13 @@ class FloorPlanPage extends StatefulWidget {
 }
 
 class _FloorPlanPageState extends State<FloorPlanPage> {
-  late LayoutInteraction interaction;
+  late LayoutRepositry repo;
   final double snapIncrement = Configs().snapIncrement;
 
   @override
   void initState() {
     super.initState();
-    interaction = LayoutInteraction(
-      floorPlanJsonString,
-      Configs().snapIncrement,
-    );
+    repo = LayoutRepositry(floorPlanJsonString, Configs().snapIncrement);
   }
 
   @override
@@ -188,87 +185,64 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
           child: GestureDetector(
             onTapUp: (details) {
               setState(() {
-                interaction.updateSelectedLayoutId(details.localPosition);
+                repo.updateSelectedLayoutId(details.localPosition);
               });
             },
             onPanStart: (details) {
-              if (interaction.selectedLayoutId == null) return;
+              if (repo.selectedLayoutId == null) return;
 
-              interaction.updateSelectedLayout();
-              interaction.updateSelectedVertexIndex(details.localPosition);
+              repo.updateSelectedLayout();
+              repo.updateSelectedVertexIndex(details.localPosition);
 
-              if (interaction.isVertexSelected()) {
+              if (repo.isVertexSelected()) {
                 setState(() {
-                  interaction.updateDragVertexRelatedElements(
-                    details.localPosition,
-                  );
+                  repo.updateDragVertexRelatedElements(details.localPosition);
                 });
-              } else if (interaction.isInsideLayout(details.localPosition)) {
+              } else if (repo.isInsideLayout(details.localPosition)) {
                 setState(() {
-                  interaction.updateDragLayoutRelatedElements(
-                    details.localPosition,
-                  );
+                  repo.updateDragLayoutRelatedElements(details.localPosition);
                 });
               } else {
-                interaction.dragMode = DragMode.none;
+                repo.dragMode = DragMode.none;
               }
             },
             onPanUpdate: (details) {
-              if (interaction.shoundntNeedUpdate()) {
+              if (repo.shoundntNeedUpdate()) {
                 return;
               }
 
-              final double totalDx = interaction.totalDx(details.localPosition);
-              final double totalDy = interaction.totalDy(details.localPosition);
+              final double totalDx = repo.totalDx(details.localPosition);
+              final double totalDy = repo.totalDy(details.localPosition);
 
               if (!totalDx.isFinite || !totalDy.isFinite) {
                 return;
               }
 
-              final updatedLayouts = interaction.floorPlan.layouts.map((
-                layout,
-              ) {
-                if (layout.id == interaction.selectedLayoutId) {
-                  if (interaction.dragMode == DragMode.layout) {
+              final updatedLayouts = repo.floorPlan.layouts.map((layout) {
+                if (layout.id == repo.selectedLayoutId) {
+                  if (repo.dragMode == DragMode.layout) {
                     // レイアウト全体の移動
-                    final snappedDx = Utils().snapToGrid(
-                      totalDx,
-                      interaction.movingBasis,
-                    );
-                    final snappedDy = Utils().snapToGrid(
-                      totalDy,
-                      interaction.movingBasis,
-                    );
-                    final updatedVertices = interaction.originalVertices!.map((
-                      vertex,
-                    ) {
-                      return Vertex(
-                        x: vertex.x + snappedDx,
-                        y: vertex.y + snappedDy,
-                      );
-                    }).toList();
                     return Layout(
                       id: layout.id,
                       name: layout.name,
                       type: layout.type,
-                      vertices: updatedVertices,
+                      vertices: repo.newVertices(details.localPosition),
                     );
-                  } else if (interaction.dragMode == DragMode.vertex &&
-                      interaction.selectedVertexIndex != null) {
+                  } else if (repo.dragMode == DragMode.vertex &&
+                      repo.selectedVertexIndex != null) {
                     // 頂点の移動
                     final updatedVertices = List<Vertex>.from(
-                      interaction.originalVertices!,
+                      repo.originalVertices!,
                     );
-                    final originalVertex = interaction
-                        .originalVertices![interaction.selectedVertexIndex!];
-                    updatedVertices[interaction.selectedVertexIndex!] = Vertex(
+
+                    updatedVertices[repo.selectedVertexIndex!] = Vertex(
                       x: Utils().snapToGrid(
-                        originalVertex.x + totalDx,
-                        interaction.movingBasis,
+                        repo.getOriginalVertex().x + totalDx,
+                        repo.movingBasis,
                       ),
                       y: Utils().snapToGrid(
-                        originalVertex.y + totalDy,
-                        interaction.movingBasis,
+                        repo.getOriginalVertex().y + totalDy,
+                        repo.movingBasis,
                       ),
                     );
                     return Layout(
@@ -283,28 +257,28 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
               }).toList();
 
               setState(() {
-                interaction.floorPlan = FloorPlan(
-                  width: interaction.floorPlan.width,
-                  height: interaction.floorPlan.height,
+                repo.floorPlan = FloorPlan(
+                  width: repo.floorPlan.width,
+                  height: repo.floorPlan.height,
                   layouts: updatedLayouts,
                 );
               });
             },
             onPanEnd: (details) {
               setState(() {
-                interaction.panStartOffset = null;
-                interaction.originalVertices = null;
-                interaction.dragMode = DragMode.none;
-                interaction.selectedVertexIndex = null;
+                repo.panStartOffset = null;
+                repo.originalVertices = null;
+                repo.dragMode = DragMode.none;
+                repo.selectedVertexIndex = null;
               });
             },
             child: SizedBox(
-              width: interaction.floorPlan.width + 50, // 余白を追加
-              height: interaction.floorPlan.height + 50, // 余白を追加
+              width: repo.floorPlan.width + 50, // 余白を追加
+              height: repo.floorPlan.height + 50, // 余白を追加
               child: CustomPaint(
                 painter: FloorPlanPainter(
-                  floorPlan: interaction.floorPlan,
-                  selectedLayoutId: interaction.selectedLayoutId,
+                  floorPlan: repo.floorPlan,
+                  selectedLayoutId: repo.selectedLayoutId,
                   snapIncrement: Configs().snapIncrement,
                 ),
               ),

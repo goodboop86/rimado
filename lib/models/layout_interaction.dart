@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:rimado/enums/enums.dart';
 import 'package:rimado/models/floor_plan.dart';
 
-class LayoutInteraction {
+class LayoutRepositry {
   late FloorPlan floorPlan;
   late double movingBasis;
   String? selectedLayoutId; // 選択中のレイアウトID
@@ -66,8 +66,29 @@ class LayoutInteraction {
     return localPosition.dx - panStartOffset!.dx;
   }
 
+  double totalDxBasis(Offset localPosition) {
+    return (totalDx(localPosition) / movingBasis).round() * movingBasis;
+  }
+
   double totalDy(Offset localPosition) {
     return localPosition.dy - panStartOffset!.dy;
+  }
+
+  double totalDyBasis(Offset localPosition) {
+    return (totalDy(localPosition) / movingBasis).round() * movingBasis;
+  }
+
+  Vertex getOriginalVertex() {
+    return originalVertices![selectedVertexIndex!];
+  }
+
+  List<Vertex> newVertices(Offset localPosition) {
+    return originalVertices!.map((vertex) {
+      return Vertex(
+        x: vertex.x + totalDxBasis(localPosition),
+        y: vertex.y + totalDyBasis(localPosition),
+      );
+    }).toList();
   }
 
   // リセット用のメソッドなども追加可能
@@ -79,7 +100,7 @@ class LayoutInteraction {
     originalVertices = null;
   }
 
-  LayoutInteraction(String floorPlanJsonString, movingBasis_) {
+  LayoutRepositry(String floorPlanJsonString, movingBasis_) {
     floorPlan = FloorPlan.fromJson(jsonDecode(floorPlanJsonString));
     movingBasis = movingBasis_;
   }
