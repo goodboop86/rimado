@@ -218,43 +218,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                 return;
               }
 
-              final updatedLayouts = repo.floorPlan.layouts.map((layout) {
-                if (layout.id == repo.selectedLayoutId) {
-                  if (repo.dragMode == DragMode.layout) {
-                    // レイアウト全体の移動
-                    return Layout(
-                      id: layout.id,
-                      name: layout.name,
-                      type: layout.type,
-                      vertices: repo.newVertices(details.localPosition),
-                    );
-                  } else if (repo.dragMode == DragMode.vertex &&
-                      repo.selectedVertexIndex != null) {
-                    // 頂点の移動
-                    final updatedVertices = List<Vertex>.from(
-                      repo.originalVertices!,
-                    );
-
-                    updatedVertices[repo.selectedVertexIndex!] = Vertex(
-                      x: Utils().snapToGrid(
-                        repo.getOriginalVertex().x + totalDx,
-                        repo.movingBasis,
-                      ),
-                      y: Utils().snapToGrid(
-                        repo.getOriginalVertex().y + totalDy,
-                        repo.movingBasis,
-                      ),
-                    );
-                    return Layout(
-                      id: layout.id,
-                      name: layout.name,
-                      type: layout.type,
-                      vertices: updatedVertices,
-                    );
-                  }
-                }
-                return layout;
-              }).toList();
+              final updatedLayouts = repo.updatedLayouts(details.localPosition);
 
               setState(() {
                 repo.floorPlan = FloorPlan(
