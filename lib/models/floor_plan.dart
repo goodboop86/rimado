@@ -8,7 +8,7 @@ class FloorPlan {
   FloorPlan({required this.width, required this.height, required this.layouts});
 
   // タップされた位置がどのレイアウト内にあるかを判定するヘルパー関数
-  String? findLayoutAtTap(Offset tapPosition) {
+  String? findLayoutIdAtTap(Offset tapPosition) {
     for (var layout in layouts) {
       final path = Path();
       if (layout.vertices.isNotEmpty) {

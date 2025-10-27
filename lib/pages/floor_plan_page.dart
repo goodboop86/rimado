@@ -168,7 +168,10 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
   @override
   void initState() {
     super.initState();
-    interaction = LayoutInteraction(floorPlanJsonString);
+    interaction = LayoutInteraction(
+      floorPlanJsonString,
+      Configs().snapIncrement,
+    );
   }
 
   @override
@@ -185,51 +188,38 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
           child: GestureDetector(
             onTapUp: (details) {
               setState(() {
-                interaction.setSelectedLayoutId(details.localPosition);
+                interaction.updateSelectedLayoutId(details.localPosition);
               });
             },
             onPanStart: (details) {
               if (interaction.selectedLayoutId == null) return;
 
-              interaction.setSelectedLayout();
-              interaction.setSelectedVertexIndex(details.localPosition);
+              interaction.updateSelectedLayout();
+              interaction.updateSelectedVertexIndex(details.localPosition);
 
-              final isInsideLayout =
-                  Utils().findLayoutAtTap(
+              if (interaction.isVertexSelected()) {
+                setState(() {
+                  interaction.updateDragVertexRelatedElements(
                     details.localPosition,
-                    interaction.floorPlan,
-                  ) ==
-                  interaction.selectedLayoutId;
-
-              if (interaction.selectedVertexIndex != null) {
-                setState(() {
-                  interaction.panStartOffset = details.localPosition;
-                  interaction.originalVertices =
-                      interaction.selectedLayout.vertices;
-                  interaction.dragMode = DragMode.vertex;
+                  );
                 });
-              } else if (isInsideLayout) {
+              } else if (interaction.isInsideLayout(details.localPosition)) {
                 setState(() {
-                  interaction.panStartOffset = details.localPosition;
-                  interaction.setOriginalVertices();
-                  interaction.selectedVertexIndex = null;
-                  interaction.dragMode = DragMode.layout;
+                  interaction.updateDragLayoutRelatedElements(
+                    details.localPosition,
+                  );
                 });
               } else {
                 interaction.dragMode = DragMode.none;
               }
             },
             onPanUpdate: (details) {
-              if (interaction.dragMode == DragMode.none ||
-                  interaction.panStartOffset == null ||
-                  interaction.originalVertices == null) {
+              if (interaction.shoundntNeedUpdate()) {
                 return;
               }
 
-              final totalDx =
-                  details.localPosition.dx - interaction.panStartOffset!.dx;
-              final totalDy =
-                  details.localPosition.dy - interaction.panStartOffset!.dy;
+              final double totalDx = interaction.totalDx(details.localPosition);
+              final double totalDy = interaction.totalDy(details.localPosition);
 
               if (!totalDx.isFinite || !totalDy.isFinite) {
                 return;
@@ -243,11 +233,11 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                     // レイアウト全体の移動
                     final snappedDx = Utils().snapToGrid(
                       totalDx,
-                      snapIncrement,
+                      interaction.movingBasis,
                     );
                     final snappedDy = Utils().snapToGrid(
                       totalDy,
-                      snapIncrement,
+                      interaction.movingBasis,
                     );
                     final updatedVertices = interaction.originalVertices!.map((
                       vertex,
@@ -274,11 +264,11 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                     updatedVertices[interaction.selectedVertexIndex!] = Vertex(
                       x: Utils().snapToGrid(
                         originalVertex.x + totalDx,
-                        snapIncrement,
+                        interaction.movingBasis,
                       ),
                       y: Utils().snapToGrid(
                         originalVertex.y + totalDy,
-                        snapIncrement,
+                        interaction.movingBasis,
                       ),
                     );
                     return Layout(
@@ -315,7 +305,7 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                 painter: FloorPlanPainter(
                   floorPlan: interaction.floorPlan,
                   selectedLayoutId: interaction.selectedLayoutId,
-                  snapIncrement: snapIncrement,
+                  snapIncrement: Configs().snapIncrement,
                 ),
               ),
             ),
