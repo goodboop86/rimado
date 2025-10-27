@@ -162,16 +162,13 @@ class FloorPlanPage extends StatefulWidget {
 }
 
 class _FloorPlanPageState extends State<FloorPlanPage> {
-  late FloorPlan _floorPlan;
-  LayoutInteraction interaction = LayoutInteraction();
-
+  late LayoutInteraction interaction;
   final double snapIncrement = Configs().snapIncrement;
-  final String floorPlanJson = floorPlanJsonString;
 
   @override
   void initState() {
     super.initState();
-    _floorPlan = FloorPlan.fromJson(jsonDecode(floorPlanJson));
+    interaction = LayoutInteraction(floorPlanJsonString);
   }
 
   @override
@@ -188,37 +185,33 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
           child: GestureDetector(
             onTapUp: (details) {
               setState(() {
-                interaction.selectedLayoutId = Utils().findLayoutAtTap(
-                  details.localPosition,
-                  _floorPlan,
-                );
+                interaction.setSelectedLayoutId(details.localPosition);
               });
             },
             onPanStart: (details) {
               if (interaction.selectedLayoutId == null) return;
 
-              final tappedLayout = _floorPlan.layouts.firstWhere(
-                (l) => l.id == interaction.selectedLayoutId,
-              );
-              final tappedVertexIndex = Utils().findVertexAtTap(
-                tappedLayout,
-                details.localPosition,
-              );
+              interaction.setSelectedLayout();
+              interaction.setSelectedVertexIndex(details.localPosition);
+
               final isInsideLayout =
-                  Utils().findLayoutAtTap(details.localPosition, _floorPlan) ==
+                  Utils().findLayoutAtTap(
+                    details.localPosition,
+                    interaction.floorPlan,
+                  ) ==
                   interaction.selectedLayoutId;
 
-              if (tappedVertexIndex != null) {
+              if (interaction.selectedVertexIndex != null) {
                 setState(() {
                   interaction.panStartOffset = details.localPosition;
-                  interaction.originalVertices = tappedLayout.vertices;
-                  interaction.selectedVertexIndex = tappedVertexIndex;
+                  interaction.originalVertices =
+                      interaction.selectedLayout.vertices;
                   interaction.dragMode = DragMode.vertex;
                 });
               } else if (isInsideLayout) {
                 setState(() {
                   interaction.panStartOffset = details.localPosition;
-                  interaction.originalVertices = tappedLayout.vertices;
+                  interaction.setOriginalVertices();
                   interaction.selectedVertexIndex = null;
                   interaction.dragMode = DragMode.layout;
                 });
@@ -242,7 +235,9 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
                 return;
               }
 
-              final updatedLayouts = _floorPlan.layouts.map((layout) {
+              final updatedLayouts = interaction.floorPlan.layouts.map((
+                layout,
+              ) {
                 if (layout.id == interaction.selectedLayoutId) {
                   if (interaction.dragMode == DragMode.layout) {
                     // レイアウト全体の移動
@@ -298,9 +293,9 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
               }).toList();
 
               setState(() {
-                _floorPlan = FloorPlan(
-                  width: _floorPlan.width,
-                  height: _floorPlan.height,
+                interaction.floorPlan = FloorPlan(
+                  width: interaction.floorPlan.width,
+                  height: interaction.floorPlan.height,
                   layouts: updatedLayouts,
                 );
               });
@@ -314,11 +309,11 @@ class _FloorPlanPageState extends State<FloorPlanPage> {
               });
             },
             child: SizedBox(
-              width: _floorPlan.width + 50, // 余白を追加
-              height: _floorPlan.height + 50, // 余白を追加
+              width: interaction.floorPlan.width + 50, // 余白を追加
+              height: interaction.floorPlan.height + 50, // 余白を追加
               child: CustomPaint(
                 painter: FloorPlanPainter(
-                  floorPlan: _floorPlan,
+                  floorPlan: interaction.floorPlan,
                   selectedLayoutId: interaction.selectedLayoutId,
                   snapIncrement: snapIncrement,
                 ),

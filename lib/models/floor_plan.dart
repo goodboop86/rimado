@@ -7,6 +7,37 @@ class FloorPlan {
 
   FloorPlan({required this.width, required this.height, required this.layouts});
 
+  // タップされた位置がどのレイアウト内にあるかを判定するヘルパー関数
+  String? findLayoutAtTap(Offset tapPosition) {
+    for (var layout in layouts) {
+      final path = Path();
+      if (layout.vertices.isNotEmpty) {
+        path.moveTo(layout.vertices[0].x, layout.vertices[0].y);
+        for (var i = 1; i < layout.vertices.length; i++) {
+          path.lineTo(layout.vertices[i].x, layout.vertices[i].y);
+        }
+        path.close();
+        if (path.contains(tapPosition)) {
+          return layout.id;
+        }
+      }
+    }
+    return null;
+  }
+
+  // タップされた位置にある頂点を判定するヘルパー関数
+  int? findVertexAtTap(Layout layout, Offset tapPosition) {
+    const double handleRadius = 10.0;
+    for (var i = 0; i < layout.vertices.length; i++) {
+      final vertex = layout.vertices[i];
+      final distance = (tapPosition - Offset(vertex.x, vertex.y)).distance;
+      if (distance <= handleRadius) {
+        return i;
+      }
+    }
+    return null;
+  }
+
   factory FloorPlan.fromJson(Map<String, dynamic> json) {
     var layoutsList = json['layouts'] as List;
     List<Layout> layouts = layoutsList.map((i) => Layout.fromJson(i)).toList();
